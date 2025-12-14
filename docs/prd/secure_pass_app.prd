@@ -1,0 +1,1790 @@
+# PRD – Secure Notes App
+
+## 1. 제품 개요
+
+### 1.1 제품 비전
+
+사용자가 **민감한 정보(ID, 비밀번호, 계좌, 연락처 등)**를 가장 **안전하면서도 빠르게 정리**할 수 있는 로컬 중심의 보안 노트 앱.
+
+- 기본은 **100% 로컬 저장 + DB 레벨 암호화**
+- AI는 **필요한 순간에만, 사용자가 선택적으로 사용**
+- 클라우드(Supabase)는 **백업/기기이동 목적의 옵션** (MVP 이후)
+
+### 1.2 핵심 가치 제안 (Value Proposition)
+
+| 가치 | 설명 |
+|------|------|
+| 🔒 강력한 보안 | PIN / 생체 인증 + SQLCipher 암호화 DB |
+| ⚡ 빠른 입력 | 한 줄 입력으로 계정 추가 (Quick Add) |
+| 📋 쉬운 마이그레이션 | 기존 메모 복붙으로 일괄 가져오기 (Import) |
+| 🔍 빠른 검색 | 노트 내 실시간 검색 + 스크롤 이동 |
+| 🧠 똑똑한 정리 | AI 기반 자동 구조화 |
+| 👀 투명성 | AI 사용 여부와 범위를 사용자가 명확히 인지 |
+
+### 1.3 핵심 철학
+
+```
+보안 우선 설계 → AI는 조력자 역할 → 사용자 통제권 최우선
+```
+
+### 1.4 캐치프레이즈
+
+> **"대충 입력해도 알아서 정리해드려요"**
+
+| 용도 | 문구 |
+|------|------|
+| 메인 | **대충 입력해도 알아서 정리해드려요** |
+| 짧은 버전 | 대충 써도 알아서 정리 |
+| 앱스토어 | 대충 입력, 똑똑하게 정리 |
+| 서브 카피 | 비밀번호 관리, 이제 편하게 |
+
+이 문구는 앱의 핵심 가치(AI 자동 구조화)를 직관적으로 전달하며, Quick Add와 Import 기능의 편리함을 강조한다.
+
+---
+
+## 2. 타겟 사용자
+
+### 2.1 주요 타겟
+
+- 여러 서비스 계정을 관리해야 하는 개인 사용자
+- 개발자, 스타트업 종사자, 프리랜서
+- 기존 메모앱/노트에서 계정 정보를 옮기려는 사용자
+- 복잡한 비밀번호 관리 앱이 부담스러운 사용자
+
+### 2.2 사용자 니즈
+
+- "비밀번호 관리 앱은 너무 무겁다"
+- "내 데이터가 어디로 가는지 명확했으면 좋겠다"
+- "검색과 추가가 빨랐으면 좋겠다"
+- "기존에 메모장에 적어둔 계정들을 쉽게 옮기고 싶다"
+
+### 2.3 사용자 시나리오
+
+**시나리오 1: 신규 사용자 마이그레이션** ⭐ 핵심
+> "기존 메모앱에 50개 넘는 계정이 적혀있어. 이걸 새 앱으로 옮기고 싶은데 일일이 입력하긴 너무 귀찮아."
+→ Import 기능으로 일괄 가져오기
+
+**시나리오 2: 일상적인 계정 추가**
+> "새로 가입한 서비스 계정을 빠르게 저장하고 싶어."
+→ Quick Add로 한 줄 입력
+
+**시나리오 3: 계정 찾기**
+> "은행 앱 비밀번호가 뭐였지? 50개 중에서 찾아야 하는데..."
+→ 노트 내 검색으로 즉시 이동
+
+---
+
+## 3. 정보 구조 (IA)
+
+### 3.1 화면 흐름
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   잠금화면   │ ──▶ │  노트북 목록  │ ──▶ │  노트북 상세  │
+│  PIN/생체   │     │    (홈)     │     │  검색+내용   │
+└─────────────┘     └─────────────┘     └─────────────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │    설정     │
+                    │  (Import)  │
+                    └─────────────┘
+```
+
+### 3.2 상세 구조
+
+```
+앱 진입
+ └─ 인증 화면 (PIN / 생체)
+     └─ 노트북 목록 화면
+         ├─ 🔑 아이디/비밀번호 (기본 제공)
+         ├─ 🏦 은행 계좌 (기본 제공)
+         ├─ 📞 전화번호 (기본 제공)
+         └─ + 새 노트북 생성
+             └─ 노트북 상세 화면
+                 ├─ 검색 Input (상단 고정)
+                 ├─ 항목 목록 (스크롤)
+                 ├─ + 추가 버튼
+                 │   ├─ Quick Add
+                 │   └─ Manual
+                 └─ 편집 모드
+     └─ 설정
+         └─ Import (다른 앱에서 가져오기)
+```
+
+---
+
+## 4. 앱 보안
+
+### 4.1 앱 잠금
+
+| 항목 | 설명 | MVP |
+|------|------|-----|
+| PIN | 필수, 4~6자리 숫자 | ✅ |
+| 생체 인증 | 선택, 지문 / Face ID | ✅ |
+| 실패 처리 | 5회 실패 시 30초 대기, 10회 실패 시 5분 대기 | ✅ |
+| 자동 잠금 | 백그라운드 전환 시 (즉시/1분/5분 선택) | ✅ |
+
+### 4.2 데이터 암호화
+
+```
+┌─────────────────────────────────────────────┐
+│              SQLCipher DB                   │
+│  ┌───────────────────────────────────────┐  │
+│  │  notebooks 테이블 (암호화됨)           │  │
+│  │  - content: 노트 본문                 │  │
+│  └───────────────────────────────────────┘  │
+└─────────────────────────────────────────────┘
+                    │
+            암호화 키 참조
+                    │
+                    ▼
+┌─────────────────────────────────────────────┐
+│         Flutter Secure Storage              │
+│  - DB 암호화 키                              │
+│  - PIN 해시                                 │
+│  - 인증 토큰 (Supabase 연동 시)              │
+└─────────────────────────────────────────────┘
+```
+
+- **DB 레벨 암호화**: SQLCipher로 DB 파일 자체 암호화 (MVP 필수)
+- **키 보관**: flutter_secure_storage (iOS Keychain / Android Keystore)
+- **평문 저장 금지**: MVP에서도 암호화 필수
+
+---
+
+## 5. 노트북 (Notebook)
+
+### 5.1 개념
+
+Notebook = 하나의 주제별 노트 컨테이너
+
+### 5.2 기본 제공 노트북 (MVP)
+
+| 노트북 | 아이콘 | 용도 |
+|--------|--------|------|
+| 아이디/비밀번호 | 🔑 | 서비스 계정 |
+| 은행 계좌 | 🏦 | 계좌번호, 은행 정보 |
+| 전화번호 | 📞 | 연락처 |
+
+### 5.3 노트북 목록 화면
+
+```
+┌─────────────────────────────────┐
+│  🔐 내 노트              [설정]  │
+├─────────────────────────────────┤
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │ 🔑 아이디/비밀번호          │  │
+│  │    12개 항목 · 3분 전 수정   │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │ 🏦 은행 계좌               │  │
+│  │    5개 항목 · 1일 전 수정   │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │ 📞 전화번호                │  │
+│  │    23개 항목 · 1주 전 수정  │  │
+│  └───────────────────────────┘  │
+│                                 │
+│           [+ 새 노트북]         │
+└─────────────────────────────────┘
+```
+
+### 5.4 노트북 기능
+
+| 기능 | 설명 | MVP |
+|------|------|-----|
+| 생성 | 이름 + 아이콘(이모지) 선택 | ✅ |
+| 삭제 | 확인 다이얼로그 후 삭제 | ✅ |
+| 수정 | 이름, 아이콘 변경 | ✅ |
+| 정렬 | 최근 수정순 (기본) | ✅ |
+| 드래그 정렬 | 사용자 지정 순서 | ❌ |
+
+---
+
+## 6. 노트북 상세 화면
+
+### 6.1 화면 구성
+
+```
+┌─────────────────────────────────┐
+│ ←  🔑 아이디/비밀번호     [편집]  │
+├─────────────────────────────────┤
+│ 🔍 [검색...]            [▼] [▲] │
+├─────────────────────────────────┤
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │ 📌 네이버                  │  │
+│  │ 아이디: hong123            │  │
+│  │ 비밀번호: ••••••••   [👁][📋]│  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │ 📌 구글                    │  │
+│  │ 아이디: august@gmail.com   │  │
+│  │ 비밀번호: ••••••••   [👁][📋]│  │
+│  └───────────────────────────┘  │
+│                                 │
+│            ...                  │
+│                                 │
+├─────────────────────────────────┤
+│              [+ 추가]           │
+└─────────────────────────────────┘
+```
+
+### 6.2 검색 기능 (MVP 핵심)
+
+| 기능 | 설명 | MVP |
+|------|------|-----|
+| 실시간 검색 | 입력 즉시 매칭 | ✅ |
+| 자동 스크롤 | 첫 번째 매칭 위치로 이동 | ✅ |
+| 결과 탐색 | [▼] [▲] 버튼으로 이전/다음 이동 | ✅ |
+| 매칭 카운트 | "3개 중 1번째" 표시 | ✅ |
+| 하이라이트 | 매칭 텍스트 배경색 강조 | ❌ (v2) |
+
+### 6.3 항목 기능
+
+| 기능 | 설명 | MVP |
+|------|------|-----|
+| 비밀번호 마스킹 | 기본 `••••••••` 표시 | ✅ |
+| 보기 토글 | [👁] 탭 시 표시 | ✅ |
+| 복사 | [📋] 탭 시 클립보드 복사 | ✅ |
+| 자동 마스킹 | 보기 후 3초 후 자동 마스킹 | ❌ (v2) |
+| 클립보드 자동 삭제 | 복사 후 30초 후 삭제 | ❌ (v2) |
+| 편집 | 항목 탭 → 편집 모달 | ✅ |
+| 삭제 | 스와이프 삭제 | ✅ |
+
+---
+
+## 7. 입력 방식
+
+### 7.1 입력 방식 개요
+
+| 모드 | AI 사용 | 데이터 전송 | 용도 | MVP |
+|------|---------|------------|------|-----|
+| **Manual** | 없음 | 없음 | 직접 입력 | ✅ |
+| **Quick Add** | 특성 기반 | 특성만 전송 | 일상 빠른 추가 | ✅ |
+| **Import** | 전체 분석 | 전체 값 전송 (동의 필요) | 마이그레이션 | ✅ |
+
+---
+
+### 7.2 Manual (수동 추가)
+
+#### 목적
+- AI를 사용하지 않고 직접 입력
+- 최대 보안이 필요한 경우
+- AI 사용량 초과 시 대안
+
+#### UX
+```
+┌─────────────────────────────────────┐
+│ ✏️ 직접 입력                        │
+├─────────────────────────────────────┤
+│                                     │
+│  서비스명 *                          │
+│  [                              ]   │
+│                                     │
+│  아이디 *                           │
+│  [                              ]   │
+│                                     │
+│  비밀번호 *                          │
+│  [                              ]   │
+│                                     │
+│  메모 (선택)                         │
+│  [                              ]   │
+│                                     │
+│              [저장]                 │
+└─────────────────────────────────────┘
+```
+
+---
+
+### 7.3 Quick Add (빠른 추가)
+
+#### 목적
+일상적으로 계정을 빠르게 추가 (보안 유지)
+
+#### 입력 예시
+```
+네이버 hong123 pass123!
+```
+
+#### 처리 흐름
+
+```
+사용자 입력: "네이버 hong123 pass123!"
+                    │
+                    ▼
+┌────────────────────────────────┐
+│ Step 1: 로컬 토큰 분리          │
+│ ["네이버", "hong123", "pass123!"] │
+└────────────────────────────────┘
+                    │
+                    ▼
+┌────────────────────────────────┐
+│ Step 2: 특성(Feature) 추출      │
+│ token_1: {type: "한글", len: 3}  │
+│ token_2: {type: "영숫자", len: 7} │
+│ token_3: {type: "특수문자포함", len: 8} │
+└────────────────────────────────┘
+                    │
+                    ▼
+┌────────────────────────────────┐
+│ Step 3: 규칙 기반 1차 판단      │
+│ → 성공 시 바로 결과 표시         │
+│ → 실패/불확실 시 AI 호출        │
+└────────────────────────────────┘
+                    │
+                    ▼ (필요 시)
+┌────────────────────────────────┐
+│ Step 4: AI에 특성만 전송        │  ← 실제 값 전송 ❌
+│ → 구조 판단 요청                │
+└────────────────────────────────┘
+                    │
+                    ▼
+┌────────────────────────────────┐
+│ Step 5: 로컬에서 값 매핑        │  ← 값은 로컬에만 존재
+│ service: "네이버"               │
+│ id: "hong123"                  │
+│ pw: "pass123!"                 │
+└────────────────────────────────┘
+                    │
+                    ▼
+          사용자 확인 → 저장
+```
+
+#### UX 흐름
+
+**Step 1: 입력**
+```
+┌─────────────────────────────────────┐
+│ ⚡ 빠른 추가                        │
+├─────────────────────────────────────┤
+│                                     │
+│  [네이버 hong123 pass123!       ]   │
+│                                     │
+│  💡 대충 공백으로 구분해서 입력해도   │
+│     알아서 정리해드려요              │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Step 2: 추천 확인**
+```
+┌─────────────────────────────────────┐
+│ 🧠 이렇게 저장할까요?               │
+├─────────────────────────────────────┤
+│                                     │
+│  ┌─────────────────────────────┐   │
+│  │ 📌 네이버                    │   │
+│  │                             │   │
+│  │ 아이디: hong123              │   │
+│  │ 비밀번호: pass123!           │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  [이대로 저장]  [수정하기]  [취소]    │
+└─────────────────────────────────────┘
+```
+
+#### 특성 분류 기준 (규칙 기반)
+
+| 특성 | 패턴 | 추정 필드 |
+|------|------|----------|
+| 한글만 | `/^[가-힣]+$/` | 서비스명 |
+| 영문+숫자 | `/^[a-zA-Z0-9]+$/` | 아이디 |
+| 이메일 형식 | `/@/` 포함 | 아이디 |
+| 특수문자 포함 | `/[!@#$%^&*]/` | 비밀번호 |
+| 숫자+하이픈 | `/^\d{2,4}-\d{3,4}-\d{4}$/` | 전화번호 |
+
+#### 보안 특징
+- ✅ 실제 값(비밀번호 등)은 절대 외부 전송되지 않음
+- ✅ AI는 형태/패턴만 분석
+- ✅ 모든 민감 정보는 로컬에서만 처리
+
+---
+
+### 7.4 Import (일괄 가져오기) - MVP 핵심
+
+#### 목적
+- 기존 메모/문서에서 계정 정보를 한 번에 마이그레이션
+- **신규 사용자 유입의 핵심 기능**
+- 진입 장벽을 낮춰 전환율 향상
+
+#### 대상 데이터 예시
+```
+디브로스 구글 계정ID: dbros.m@dbros.co.krPW: elqmfhtm1!
+디브로스 애플 계정아이디 : mobile@dbros.co.kr비밀번호 : Mobile1!
+야후 (flickr)augustkim05 / 시작대문자
+```
+
+→ 구분자 없이 붙어있거나, 형식이 뒤죽박죽인 데이터도 AI가 분석
+
+#### UX 흐름
+
+**Step 1: 진입 (설정 메뉴)**
+```
+┌─────────────────────────────────────┐
+│ ⚙️ 설정                             │
+├─────────────────────────────────────┤
+│                                     │
+│  📋 다른 앱에서 가져오기         >   │
+│                                     │
+│  🔐 보안 설정                   >   │
+│                                     │
+│  ℹ️ 앱 정보                     >   │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Step 2: 텍스트 입력**
+```
+┌─────────────────────────────────────┐
+│ 📋 다른 앱에서 가져오기              │
+├─────────────────────────────────────┤
+│                                     │
+│  기존 메모를 붙여넣으세요             │
+│  ┌─────────────────────────────┐   │
+│  │                             │   │
+│  │  (여기에 붙여넣기)            │   │
+│  │                             │   │
+│  │                             │   │
+│  │                             │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  💡 어떤 형식이든 괜찮아요.          │
+│     AI가 자동으로 분석합니다.        │
+│                                     │
+│              [다음]                 │
+└─────────────────────────────────────┘
+```
+
+**Step 3: 동의 확인**
+```
+┌─────────────────────────────────────┐
+│ ⚠️ AI 분석 안내                     │
+├─────────────────────────────────────┤
+│                                     │
+│  입력하신 텍스트를 AI가 분석하여      │
+│  자동으로 구조화합니다.              │
+│                                     │
+│  ┌─────────────────────────────┐   │
+│  │ 📤 데이터 처리 방식           │   │
+│  │                             │   │
+│  │ • 텍스트가 외부 AI 서버로     │   │
+│  │   전송됩니다                 │   │
+│  │ • 분석 완료 후 즉시 삭제됩니다 │   │
+│  │ • 서버에 저장되지 않습니다    │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  ☑️ 위 내용을 이해했습니다           │
+│                                     │
+│    [취소]          [AI로 분석하기]   │
+└─────────────────────────────────────┘
+```
+
+**Step 4: 분석 중**
+```
+┌─────────────────────────────────────┐
+│ 🔄 분석 중...                       │
+├─────────────────────────────────────┤
+│                                     │
+│                                     │
+│           ⏳                        │
+│                                     │
+│     AI가 텍스트를 분석하고 있어요     │
+│                                     │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Step 5: 결과 확인**
+```
+┌─────────────────────────────────────┐
+│ ✅ 8개 항목을 찾았습니다             │
+├─────────────────────────────────────┤
+│                                     │
+│  저장할 노트북 선택:                 │
+│  [🔑 아이디/비밀번호         ▼]     │
+│                                     │
+│  ─────────────────────────────     │
+│                                     │
+│  ☑️ 디브로스 구글 계정               │
+│     ID: dbros.m@dbros.co.kr        │
+│     PW: elqmfhtm1!            [수정]│
+│                                     │
+│  ☑️ 디브로스 애플 계정               │
+│     ID: mobile@dbros.co.kr         │
+│     PW: Mobile1!              [수정]│
+│                                     │
+│  ☑️ 야후 (flickr)              ⚠️   │
+│     ID: augustkim05                │
+│     PW: 시작대문자             [수정]│
+│     💬 확인이 필요해 보입니다        │
+│                                     │
+│  ☐ 스튜디오 계정                    │
+│     ID: cosmo.studio.kr@gmail.com  │
+│     PW: (없음)                [수정]│
+│     💬 비밀번호를 찾지 못했습니다     │
+│                                     │
+│  [선택 항목 저장]    [전체 저장]      │
+└─────────────────────────────────────┘
+```
+
+#### Import 특징
+
+| 항목 | 설명 |
+|------|------|
+| 접근 위치 | 설정 메뉴 (일상 사용 유도 방지) |
+| 동의 | 명시적 동의 필수 |
+| 분석 | 전체 텍스트 AI 분석 |
+| 결과 | 개별 항목 선택/수정 가능 |
+| 불확실 표시 | ⚠️ 마크로 확인 필요 항목 표시 |
+| 노트북 선택 | 저장할 노트북 지정 가능 |
+
+#### 보안 고려사항
+- ⚠️ 전체 텍스트(비밀번호 포함)가 AI 서버로 전송됨
+- ✅ 사용자 명시적 동의 후에만 진행
+- ✅ 분석 후 서버에 저장되지 않음 (즉시 삭제)
+- ✅ HTTPS 암호화 전송
+
+---
+
+## 8. AI 시스템
+
+### 8.1 AI 사용 원칙
+
+1. **선택적 사용**: 사용자가 원할 때만 AI 사용
+2. **투명한 고지**: AI 사용 시 명확한 안내 (특히 Import)
+3. **최소 데이터**: Quick Add는 특성만, Import는 동의 후 전체
+4. **Graceful Degradation**: AI 실패 시 규칙 기반 또는 수동 입력으로 전환
+
+### 8.2 AI 서비스 구조
+
+```
+┌──────────┐      ┌─────────────────┐      ┌────────────┐
+│  Flutter │ ───▶ │ Supabase Edge   │ ───▶ │ Gemini API │
+│   App    │ ◀─── │ Function        │ ◀─── │  (Flash)   │
+└──────────┘      └─────────────────┘      └────────────┘
+                         │
+                   ┌─────┴─────┐
+                   │ API Key 보관 │
+                   │ 사용량 제한  │
+                   │ Rate Limit  │
+                   └───────────┘
+```
+
+### 8.3 기능별 AI 사용 방식
+
+| 기능 | 전송 데이터 | 보안 수준 | 동의 필요 |
+|------|------------|----------|----------|
+| Quick Add | 특성(feature)만 | ✅ 높음 | ❌ |
+| Import | 전체 텍스트 | ⚠️ 중간 | ✅ 필수 |
+
+### 8.4 비용 구조
+
+| 항목 | 비용 |
+|------|------|
+| Gemini API | 무료 (일 1,500회) |
+| Supabase Edge Functions | 무료 (월 50만 회) |
+| 예상 커버 사용자 | ~100명 (Quick Add + Import 혼합) |
+
+### 8.5 AI 사용량 정책
+
+| 기능 | 정책 |
+|------|------|
+| Quick Add | 일 10회 제한, 초과 시 규칙 기반만 |
+| Import | 무제한 (초기 마이그레이션 용도) |
+
+---
+
+## 9. 데이터 모델
+
+### 9.1 ERD
+
+```
+┌─────────────────────────────────────────────────┐
+│  notebooks                                      │
+├─────────────────────────────────────────────────┤
+│  id            TEXT PRIMARY KEY (UUID)          │
+│  title         TEXT NOT NULL      "아이디/비번"  │
+│  icon          TEXT DEFAULT '📝'   이모지        │
+│  content       TEXT               암호화된 본문  │
+│  order_index   INTEGER DEFAULT 0  정렬 순서      │
+│  created_at    TEXT               ISO8601       │
+│  updated_at    TEXT               ISO8601       │
+│  user_id       TEXT               Supabase 연동 │
+│  is_synced     INTEGER DEFAULT 0  동기화 플래그  │
+└─────────────────────────────────────────────────┘
+```
+
+### 9.2 Content 저장 형식
+
+노트북 내 항목들은 JSON 배열로 저장:
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid-1",
+      "service": "네이버",
+      "username": "hong123",
+      "password": "pass123!",
+      "memo": "",
+      "created_at": "2024-01-15T09:00:00Z"
+    },
+    {
+      "id": "uuid-2",
+      "service": "구글",
+      "username": "august@gmail.com",
+      "password": "secret456!",
+      "memo": "업무용",
+      "created_at": "2024-01-15T09:05:00Z"
+    }
+  ]
+}
+```
+
+→ SQLCipher로 DB 자체가 암호화되어 있으므로 content도 암호화됨
+
+---
+
+## 10. MVP 범위 확정
+
+### 10.1 MVP 목표
+
+**"안전하게 저장 + 빠르게 찾고 + AI로 쉽게 정리"** 검증
+
+- 1인 개발 기준 **5~6주 내 출시** 가능한 수준
+- **Import로 신규 사용자 유입** + **Quick Add로 일상 사용** 검증
+
+### 10.2 MVP 포함 기능 (In Scope)
+
+#### 1️⃣ 보안 / 진입
+
+| 기능 | 상세 |
+|------|------|
+| PIN 잠금 | 4~6자리, 필수 |
+| 생체 인증 | 지문 / Face ID, 선택 |
+| 자동 잠금 타이머 | 즉시 / 1분 / 5분 |
+| 실패 제한 | 5회 실패 → 30초 대기 |
+
+#### 2️⃣ 로컬 데이터 저장
+
+| 기능 | 상세 |
+|------|------|
+| DB | SQLite + SQLCipher 암호화 |
+| 범위 | 단일 디바이스 |
+| 보안 | 평문 저장 ❌ (암호화 필수) |
+
+#### 3️⃣ 노트북 관리
+
+| 기능 | 상세 |
+|------|------|
+| 노트북 생성/삭제 | ✅ |
+| 기본 노트북 3종 | 🔑 아이디/비밀번호, 🏦 은행 계좌, 📞 전화번호 |
+
+#### 4️⃣ 입력 방식
+
+| 방식 | 포함 | 상세 |
+|------|------|------|
+| Manual | ✅ | 폼 기반 (서비스명/아이디/비밀번호/메모) |
+| Quick Add | ✅ | 한 줄 입력 → 규칙+AI 분석 → 미리보기 → 확인 |
+| Import | ✅ | 전체 텍스트 → AI 분석 → 선택 저장 (동의 필수) |
+
+#### 5️⃣ 노트 내부 검색
+
+| 기능 | 상세 |
+|------|------|
+| 검색 Input | 노트 상단 고정 |
+| 실시간 매칭 | 입력 즉시 검색 |
+| 자동 스크롤 | 첫 번째 매칭 위치로 이동 |
+| 결과 탐색 | 이전/다음 버튼 |
+
+#### 6️⃣ 항목 관리
+
+| 기능 | 상세 |
+|------|------|
+| 비밀번호 마스킹 | 기본 `••••••••` |
+| 보기 토글 | 👁 버튼 |
+| 복사 | 📋 버튼 |
+| 편집/삭제 | ✅ |
+
+### 10.3 MVP 제외 기능 (Out of Scope)
+
+| 기능 | 도입 시점 |
+|------|----------|
+| Supabase / 클라우드 백업 | v2 |
+| 기기 간 동기화 | v2 |
+| 태그 / 즐겨찾기 | v2 |
+| 비밀번호 자동 생성기 | v2 |
+| 검색 하이라이트 | v2 |
+| 클립보드 자동 삭제 | v2 |
+| 복수 계정 공유 | 미정 |
+
+### 10.4 MVP AI 정책
+
+```
+┌─────────────────────────────────────────────────┐
+│                   입력 요청                      │
+└─────────────────────────────────────────────────┘
+                      │
+        ┌─────────────┴─────────────┐
+        ▼                           ▼
+   [Quick Add]                  [Import]
+        │                           │
+        ▼                           ▼
+ ┌──────────────┐           ┌──────────────┐
+ │ 규칙 기반 1차 │           │ 사용자 동의  │
+ │    파싱      │           │    확인      │
+ └──────────────┘           └──────────────┘
+        │                           │
+   ┌────┴────┐                      ▼
+   ▼         ▼              ┌──────────────┐
+[확실]   [불확실]            │ 전체 텍스트  │
+   │         │              │  AI 분석    │
+   ▼         ▼              └──────────────┘
+ 결과    AI 특성분석                │
+         (한도 체크)               ▼
+              │                  결과
+         ┌────┴────┐         (선택/수정)
+         ▼         ▼
+    [한도 내]  [초과]
+         │         │
+         ▼         ▼
+    AI 분석    규칙 결과
+              (Fallback)
+```
+
+### 10.5 MVP 성공 기준 (Exit Criteria)
+
+| 지표 | 목표 |
+|------|------|
+| Import 완료율 | ≥ 70% (시작 → 저장) |
+| Quick Add 파싱 성공률 | ≥ 70% |
+| 사용자 승인율 (수정 없이 저장) | ≥ 60% |
+| 앱 크래시율 | < 1% |
+| 보안 관련 이슈 | 0건 |
+
+---
+
+## 11. 기술 스택
+
+### 11.1 클라이언트
+
+| 항목 | 선택 | 사유 |
+|------|------|------|
+| Framework | **Flutter** | 크로스플랫폼, 빠른 개발 |
+| Navigation | **go_router** | 공식 추천, 간결함 |
+| State | **Riverpod** | 타입 안전, 테스트 용이 |
+| Local DB | **sqflite_sqlcipher** | DB 레벨 암호화 |
+| Secure Storage | **flutter_secure_storage** | 키 보관 |
+| 생체인증 | **local_auth** | 지문/Face ID |
+
+### 11.2 백엔드
+
+| 항목 | 선택 | 사유 |
+|------|------|------|
+| BaaS | **Supabase** | 무료 티어 넉넉, PostgreSQL |
+| AI Proxy | **Edge Functions** | API 키 보호, Rate Limit |
+
+### 11.3 AI
+
+| 항목 | 선택 | 사유 |
+|------|------|------|
+| LLM | **Gemini Flash** | 무료 티어 최대 (일 1,500회) |
+| 용도 | Quick Add (특성 분석), Import (전체 분석) |
+
+---
+
+## 12. 개발 일정
+
+### Phase 1: MVP (5~6주)
+
+**Week 1-2: 기반 구축**
+- [ ] 프로젝트 세팅 (Flutter, go_router, Riverpod)
+- [ ] SQLCipher DB 설정
+- [ ] PIN 인증 구현
+- [ ] 생체 인증 구현
+- [ ] 자동 잠금 타이머
+
+**Week 3: 노트북 기능**
+- [ ] 노트북 목록 화면
+- [ ] 노트북 CRUD
+- [ ] 기본 노트북 3종 초기화
+- [ ] 노트북 상세 화면
+- [ ] 항목 표시 (마스킹/복사)
+
+**Week 4: 입력 기능**
+- [ ] Manual 입력 (폼)
+- [ ] 규칙 기반 파싱 로직
+- [ ] Supabase Edge Function 설정
+- [ ] Quick Add 구현 (특성 분석)
+
+**Week 5: Import + 검색**
+- [ ] Import 화면 (설정 메뉴)
+- [ ] Import AI 분석 연동
+- [ ] Import 결과 선택/수정 UI
+- [ ] 검색 + 스크롤 이동
+
+**Week 6: 마무리**
+- [ ] UI 다듬기
+- [ ] 테스트 및 버그 수정
+- [ ] 앱스토어 심사 준비
+- [ ] 스크린샷, 설명 작성
+
+### Phase 2: v2 (MVP 이후)
+
+- [ ] 검색 하이라이트
+- [ ] 클립보드 자동 삭제
+- [ ] Supabase Auth 연동
+- [ ] 클라우드 동기화
+
+### Phase 3: 고도화
+
+- [ ] 태그/즐겨찾기
+- [ ] 비밀번호 생성기
+- [ ] 위젯 (iOS/Android)
+- [ ] 다크모드
+
+---
+
+## 13. 성공 지표 (KPI)
+
+### 13.1 핵심 지표
+
+| 지표 | 목표 | 측정 방법 |
+|------|------|----------|
+| Import 사용률 | > 30% | Import 사용 / 전체 신규 사용자 |
+| Import 완료율 | > 70% | 저장 완료 / Import 시작 |
+| Quick Add 사용 비율 | > 50% | Quick Add / 전체 추가 |
+| AI 추천 승인율 | > 60% | 수정 없이 저장 / 전체 |
+| 앱 재방문율 (7일) | > 40% | 재방문 / 설치 |
+
+### 13.2 보안 지표
+
+| 지표 | 목표 |
+|------|------|
+| 생체인증 활성화율 | > 50% |
+| Import 동의 후 이탈률 | < 30% |
+| 보안 관련 1점 리뷰 | 0건 |
+| 앱 크래시율 | < 1% |
+
+---
+
+## 14. 리스크 및 대응
+
+| 리스크 | 영향 | 대응 방안 |
+|--------|------|----------|
+| Gemini 무료 한도 초과 | AI 기능 제한 | Quick Add Graceful Degradation, Import는 우선 제공 |
+| Import 분석 정확도 낮음 | 사용자 이탈 | 수정 UI 강화, 불확실 항목 표시 |
+| Import 보안 우려 | 사용자 거부 | 명확한 동의 UI, 데이터 처리 방식 설명 |
+| 데이터 유실 | 치명적 | 자동 백업 권유 (v2), 복구 기능 |
+| 앱스토어 리젝 | 출시 지연 | 보안 정책 사전 검토 |
+
+---
+
+## 15. 향후 확장 (Roadmap)
+
+| 버전 | 기능 |
+|------|------|
+| v2 | 클라우드 백업, 기기 동기화, 검색 하이라이트 |
+| v3 | 태그/즐겨찾기, 비밀번호 생성기 |
+| v4 | 위젯, 다크모드 |
+| 미정 | 팀/공유 기능, 브라우저 확장 |
+
+---
+
+## 16. 전체 비범위 (Out of Scope)
+
+현재 로드맵에 포함되지 않은 기능:
+
+- ❌ 브라우저 자동 로그인 (확장 프로그램)
+- ❌ 클라우드 강제 동기화 (선택적 옵션으로만)
+- ❌ 팀/공유 기능
+- ❌ 웹 버전
+- ❌ OTP/2FA 관리
+
+---
+
+## 17. 부록
+
+### A. 경쟁 앱 분석
+
+| 앱 | 장점 | 단점 |
+|-----|------|------|
+| 1Password | 기능 풍부 | 유료, 무거움 |
+| Bitwarden | 오픈소스, 무료 | UI 복잡 |
+| Apple 키체인 | 시스템 통합 | Apple 전용 |
+| 메모앱 | 간편함 | 보안 없음 |
+
+**우리의 포지션**: 메모앱의 간편함 + 보안 앱의 안전함 + **쉬운 마이그레이션**
+
+### B. 용어 정의
+
+| 용어 | 정의 |
+|------|------|
+| Notebook | 주제별 노트 컨테이너 |
+| Item | 노트북 내 개별 계정 정보 |
+| Quick Add | 한 줄 입력 → 특성 기반 AI/규칙 분석 |
+| Import | 전체 텍스트 → AI 분석 → 일괄 가져오기 |
+| Feature | Quick Add에서 추출하는 토큰 특성 |
+| Graceful Degradation | AI 불가 시 규칙 기반으로 전환 |
+
+### C. 앱스토어 설명 (안)
+
+#### 짧은 설명
+> 대충 입력, 똑똑하게 정리 - AI 비밀번호 노트
+
+#### 전체 설명
+
+```
+📝 대충 입력해도 알아서 정리해드려요
+
+"네이버 hong123 pass123!"
+
+이렇게만 입력하면 AI가 알아서 정리합니다.
+기존 메모장에 적어둔 계정들도 복사해서 붙여넣기만 하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ 주요 기능
+
+⚡ 빠른 추가
+대충 공백으로 구분해서 입력하면 AI가 자동으로 정리
+
+📋 쉬운 마이그레이션  
+기존 메모 복사+붙여넣기로 한 번에 가져오기
+
+🔍 빠른 검색
+수십 개 계정도 검색 한 번에 찾기
+
+🔒 강력한 보안
+PIN/생체인증 + 암호화 DB로 안전하게 보관
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔐 보안 정책
+
+• 모든 데이터는 기기에만 저장됩니다
+• 데이터베이스는 암호화되어 저장됩니다
+• AI 분석 시 민감 정보는 전송되지 않습니다 (Quick Add)
+• Import 사용 시 명확한 동의 절차를 거칩니다
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+비밀번호 관리, 이제 편하게 시작하세요.
+```
+
+#### 키워드 (안)
+비밀번호, 패스워드, 계정관리, 보안노트, AI, 자동정리, 암호화
+
+### D. Quick Add Parser 상세 스펙 (MVP)
+
+#### D.1 목적
+
+사용자가 대충 입력한 한 줄 텍스트를 분석하여 구조화된 계정 항목으로 변환하고, 저장 전 사용자에게 확인/수정 기회를 제공한다.
+
+**변환 대상 필드:**
+- 서비스명
+- 아이디(ID)
+- 비밀번호(PW)
+- 기타 정보(전화번호, 메모)
+
+#### D.2 입력 전제 조건
+
+| 항목 | 조건 |
+|------|------|
+| 형식 | 1줄 텍스트 (엔터 기준) |
+| 길이 | 5자 ~ 200자 |
+| 언어 | 혼합 가능 (한글/영문/숫자/특수문자) |
+
+**입력 예시:**
+```
+대한항공 myidtest 12390**
+네이버 hong123 pass!23
+우리은행 1002-123-456 4321
+```
+
+#### D.3 전체 처리 흐름
+
+```
+[사용자 입력]
+      ↓
+[1] 토큰 분리 (Tokenizer)
+      ↓
+[2] 토큰 특성 분석 (Feature Extractor)
+      ↓
+[3] 규칙 기반 분류 (Rule Engine)
+      ↓
+[4] AI 보조 판단 (Optional)
+      ↓
+[5] 구조 결과 생성
+      ↓
+[6] 사용자 확인 UI
+```
+
+#### D.4 1단계: 토큰 분리 (Tokenizer)
+
+**분리 기준:**
+
+| 구분자 | 처리 방식 |
+|--------|----------|
+| 공백 (` `) | 항상 분리 |
+| 탭 | 항상 분리 |
+| `/` | 항상 분리 |
+| `-` | 조건부 분리 (아래 규칙 참고) |
+| `:` | 분리 + 레이블 제거 |
+
+**`-` 조건부 분리 규칙:**
+- 앞뒤가 숫자면 유지 → `010-1234-5678` (전화번호)
+- 앞뒤가 문자면 유지 → `hong-123` (아이디)
+- 단독 `-`만 구분자로 처리 → `네이버 - hong123` → `["네이버", "hong123"]`
+
+**`:` 레이블 제거:**
+```
+"아이디: hong123" → ["hong123"]  (아이디 레이블 제거)
+"pw: secret123" → ["secret123"]  (pw 레이블 제거)
+```
+
+제거 대상 레이블: `아이디`, `id`, `ID`, `비밀번호`, `비번`, `pw`, `PW`, `pass`, `password`
+
+**연속 구분자:** 하나로 병합
+
+**예시:**
+```
+입력: "대한항공 myidtest/12390**"
+결과: ["대한항공", "myidtest", "12390**"]
+
+입력: "네이버 - hong-123 - pass123"
+결과: ["네이버", "hong-123", "pass123"]
+
+입력: "구글 아이디: test@gmail.com 비번: secret!"
+결과: ["구글", "test@gmail.com", "secret!"]
+```
+
+#### D.5 2단계: 토큰 특성 분석 (Feature Extractor)
+
+각 토큰의 값은 유지한 채, 아래 특성만 추출한다.
+
+| 특성 | 설명 | 예시 |
+|------|------|------|
+| length | 문자열 길이 | 8 |
+| hasKorean | 한글 포함 여부 | true/false |
+| hasAlpha | 영문 포함 여부 | true/false |
+| hasDigit | 숫자 포함 여부 | true/false |
+| hasSpecial | 특수문자 포함 여부 | true/false |
+| isEmail | 이메일 형식 (`@` 포함) | true/false |
+| isURL | URL 형식 | true/false |
+| isNumeric | 숫자만 구성 | true/false |
+| isPhoneLike | 전화번호 패턴 | true/false |
+
+**특성 추출 예시:**
+```
+토큰: "hong123"
+특성: { length: 7, hasAlpha: true, hasDigit: true, hasSpecial: false, ... }
+
+토큰: "pass!@#"
+특성: { length: 7, hasAlpha: true, hasDigit: false, hasSpecial: true, ... }
+```
+
+#### D.6 3단계: 규칙 기반 분류 (Rule Engine)
+
+**우선순위 규칙 (상위 → 하위):**
+
+| 순위 | 규칙 | 조건 | 분류 |
+|------|------|------|------|
+| 0 | 첫 번째 + 한글 | `index == 0 && hasKorean` | 서비스명 |
+| 1 | 이메일 | `isEmail == true` | ID |
+| 2 | 특수문자 + 길이 | `hasSpecial && length >= 6` | PW |
+| 3 | 영문+숫자 혼합 | `hasAlpha && hasDigit && !hasSpecial` | ID 후보 |
+| 4 | 한글 + 짧음 | `hasKorean && length <= 15` | 서비스명 |
+| 5 | 숫자+하이픈 | `isPhoneLike` | 전화번호/계좌 (기타) |
+
+**분류 예시:**
+```
+입력: "대한항공 myidtest 12390**"
+
+토큰 0: "대한항공" → Rule 0 (첫번째+한글) → 서비스명 ✅
+토큰 1: "myidtest" → Rule 3 (영문+숫자) → ID ✅
+토큰 2: "12390**" → Rule 2 (특수문자+길이6+) → PW ✅
+```
+
+#### D.7 4단계: AI 보조 판단 (Optional)
+
+**AI 호출 조건:**
+- 규칙 기반 결과가 불완전할 때
+  - ID 또는 PW가 없음
+  - 다수 후보 존재
+  - 신뢰도가 낮은 분류 존재
+
+**전송 데이터 (특성만, 값 마스킹):**
+```json
+{
+  "tokens": [
+    { "index": 0, "features": ["korean", "len4"] },
+    { "index": 1, "features": ["alpha", "digit", "len8"] },
+    { "index": 2, "features": ["digit", "special", "len7"] }
+  ]
+}
+```
+
+⚠️ **실제 문자열 값은 절대 전송하지 않음**
+
+**AI 응답 예시:**
+```json
+{
+  "service": 0,
+  "id": 1,
+  "password": 2
+}
+```
+
+#### D.8 5단계: 구조 결과 생성
+
+**내부 데이터 구조 (신뢰도 포함):**
+```json
+{
+  "service": { "value": "대한항공", "confidence": "high" },
+  "id": { "value": "myidtest", "confidence": "high" },
+  "password": { "value": "12390**", "confidence": "medium" },
+  "extra": []
+}
+```
+
+**신뢰도 기준:**
+
+| 신뢰도 | 조건 |
+|--------|------|
+| high | 규칙 명확 매칭 (Rule 0, 1, 2) |
+| medium | 후보 기반 추정 (Rule 3, 4) |
+| low | AI 판단 또는 불확실 |
+
+**누락 허용:**
+- password 없음 → 저장 가능
+- id 없음 → 저장 가능
+- service 없음 → "미지정"으로 저장
+
+#### D.9 6단계: 사용자 확인 UI
+
+**확인 화면:**
+```
+┌─────────────────────────────────────┐
+│ 🧠 이렇게 저장할까요?               │
+├─────────────────────────────────────┤
+│                                     │
+│  📌 대한항공                        │
+│                                     │
+│  아이디: myidtest                   │
+│  비밀번호: 12390**             ⚠️   │
+│                                     │
+│  ⚠️ 비밀번호가 맞는지 확인해주세요   │
+│                                     │
+│  [이대로 저장]  [수정하기]  [취소]    │
+└─────────────────────────────────────┘
+```
+
+**신뢰도별 UI 표시:**
+
+| 신뢰도 | 표시 |
+|--------|------|
+| high | 표시 없음 |
+| medium | ⚠️ + 확인 요청 메시지 |
+| low | ⚠️ + 수정 권유 메시지 |
+
+**사용자 선택:**
+- ✅ 이대로 저장
+- ✏️ 수정하기 → 수정 폼으로 이동
+- ❌ 취소
+
+#### D.10 실패 & 예외 처리
+
+| 상황 | 처리 |
+|------|------|
+| 전혀 분류 불가 | 전체를 메모로 저장 제안 |
+| AI 사용 불가 (한도 초과) | 규칙 기반 결과만 사용 + 안내 문구 |
+| AI 응답 오류 | 규칙 기반 결과로 폴백 |
+| 토큰 1개만 존재 | 서비스명으로 저장 제안 |
+
+**안내 문구 예시:**
+```
+💡 AI 분석을 사용할 수 없어 기본 규칙으로 분석했어요.
+   결과를 확인해주세요.
+```
+
+#### D.11 MVP 제외 (v2 이후)
+
+- 다중 계정 자동 분리 (여러 줄 입력)
+- Import 연동
+- 사용자 정의 규칙
+- 학습 기반 개선
+- 분류 히스토리 기반 추천
+
+#### D.12 Rule Engine 의사코드 (Pseudo Code)
+
+```
+// ==============================
+// Data Structures
+// ==============================
+
+Token {
+  value: String              // 실제 문자열 (로컬 전용)
+  index: Int                 // 토큰 순서
+  features: FeatureSet
+  consumed: Bool             // 분류 완료 플래그
+}
+
+FeatureSet {
+  length: Int
+  hasKorean: Bool
+  hasAlpha: Bool
+  hasDigit: Bool
+  hasSpecial: Bool
+  isEmail: Bool
+  isURL: Bool
+  isNumeric: Bool
+  isPhoneLike: Bool
+}
+
+ParsedResult {
+  service: String?
+  id: String?
+  password: String?
+  extras: List<String>
+  confidence: Float          // 0.0 ~ 1.0
+  needAI: Bool
+}
+
+// ==============================
+// Entry Point
+// ==============================
+
+function parseQuickAdd(inputText: String): ParsedResult {
+
+  tokens = tokenize(inputText)
+  analyzedTokens = analyzeFeatures(tokens)
+
+  result = ParsedResult(
+    service = null,
+    id = null,
+    password = null,
+    extras = [],
+    confidence = 0.0,
+    needAI = false
+  )
+
+  // Step 1: High-priority deterministic rules
+  applyEmailRule(analyzedTokens, result)
+  applyPasswordRule(analyzedTokens, result)
+
+  // Step 2: Medium-priority heuristic rules
+  applyIdRule(analyzedTokens, result)
+  applyServiceRule(analyzedTokens, result)
+
+  // Step 3: Remaining tokens
+  collectExtras(analyzedTokens, result)
+
+  // Step 4: Confidence & AI decision
+  evaluateConfidence(result, analyzedTokens)
+
+  if (result.confidence < 0.7) {
+    result.needAI = true
+  }
+
+  return result
+}
+
+// ==============================
+// Tokenization
+// ==============================
+
+function tokenize(text: String): List<Token> {
+  // 1차: 공백, 탭, / 로 분리
+  primarySeparators = [' ', '\t', '/']
+  rawTokens = splitBySeparators(text, primarySeparators)
+
+  // 2차: 단독 '-' 처리 (앞뒤 공백 있는 경우만)
+  // "네이버 - hong123" → ["네이버", "hong123"]
+  // "hong-123" → ["hong-123"] (유지)
+
+  // 3차: ':' 레이블 제거
+  // "아이디: hong123" → ["hong123"]
+  labelPatterns = ["아이디", "id", "ID", "비밀번호", "비번", "pw", "PW", "pass", "password"]
+  
+  tokens = []
+  for (i in rawTokens.indices) {
+    cleaned = removeLabels(rawTokens[i], labelPatterns)
+    if (cleaned.trim().isNotEmpty) {
+      tokens.add(Token(value=cleaned, index=i, consumed=false))
+    }
+  }
+  return tokens
+}
+
+// ==============================
+// Feature Analysis
+// ==============================
+
+function analyzeFeatures(tokens: List<Token>): List<Token> {
+  for (token in tokens) {
+    token.features = FeatureSet(
+      length = token.value.length,
+      hasKorean = regex("[가-힣]").containsIn(token.value),
+      hasAlpha = regex("[a-zA-Z]").containsIn(token.value),
+      hasDigit = regex("[0-9]").containsIn(token.value),
+      hasSpecial = regex("[!@#$%^&*(),.?\":{}|<>]").containsIn(token.value),
+      isEmail = regex("^[\\w.-]+@[\\w.-]+\\.\\w+$").matches(token.value),
+      isURL = regex("^https?://").containsIn(token.value),
+      isNumeric = regex("^[0-9]+$").matches(token.value),
+      isPhoneLike = regex("^\\d{2,4}-\\d{3,4}-\\d{4}$").matches(token.value)
+    )
+  }
+  return tokens
+}
+
+// ==============================
+// Rule Definitions (우선순위 순)
+// ==============================
+
+// Rule 1: 이메일 → ID (최우선)
+function applyEmailRule(tokens, result) {
+  for (token in tokens) {
+    if (token.features.isEmail && result.id == null) {
+      result.id = token.value
+      token.consumed = true
+      result.confidence += 0.3
+      break
+    }
+  }
+}
+
+// Rule 2: 특수문자 + 길이 6+ → PW
+function applyPasswordRule(tokens, result) {
+  for (token in tokens) {
+    if (!token.consumed
+        && token.features.hasSpecial
+        && token.features.length >= 6) {
+      result.password = token.value
+      token.consumed = true
+      result.confidence += 0.3
+      break
+    }
+  }
+}
+
+// Rule 3: 영문+숫자 혼합 → ID 후보
+function applyIdRule(tokens, result) {
+  for (token in tokens) {
+    if (!token.consumed
+        && token.features.hasAlpha
+        && token.features.hasDigit
+        && !token.features.hasSpecial
+        && result.id == null) {
+      result.id = token.value
+      token.consumed = true
+      result.confidence += 0.2
+      break
+    }
+  }
+}
+
+// Rule 0 + 4: 한글 + 짧음 → 서비스명 (첫번째 토큰 우선)
+function applyServiceRule(tokens, result) {
+  // 첫 번째 토큰이 한글이면 최우선 (Rule 0)
+  if (tokens.length > 0 
+      && !tokens[0].consumed
+      && tokens[0].features.hasKorean
+      && result.service == null) {
+    result.service = tokens[0].value
+    tokens[0].consumed = true
+    result.confidence += 0.25
+    return
+  }
+  
+  // 그 외 한글 토큰 (Rule 4)
+  for (token in tokens) {
+    if (!token.consumed
+        && token.features.hasKorean
+        && token.features.length <= 15
+        && result.service == null) {
+      result.service = token.value
+      token.consumed = true
+      result.confidence += 0.2
+      break
+    }
+  }
+}
+
+// ==============================
+// Extras & Fallback
+// ==============================
+
+function collectExtras(tokens, result) {
+  for (token in tokens) {
+    if (!token.consumed) {
+      result.extras.add(token.value)
+    }
+  }
+}
+
+function evaluateConfidence(result, tokens) {
+  // normalize
+  if (result.confidence > 1.0) {
+    result.confidence = 1.0
+  }
+
+  // essential field missing penalty
+  if (result.service == null) result.confidence -= 0.2
+  if (result.id == null) result.confidence -= 0.2
+  if (result.password == null) result.confidence -= 0.1
+
+  if (result.confidence < 0) result.confidence = 0.0
+}
+
+// ==============================
+// Confidence → UI 매핑
+// ==============================
+
+function getConfidenceLevel(confidence: Float): String {
+  if (confidence >= 0.8) return "high"
+  if (confidence >= 0.5) return "medium"
+  return "low"
+}
+
+// ==============================
+// AI Handoff (Optional)
+// ==============================
+
+function buildAIFeaturePayload(tokens): Json {
+  // ⚠️ value는 절대 포함하지 않음!
+  payload = []
+  for (token in tokens) {
+    payload.add({
+      index: token.index,
+      features: [
+        token.features.hasKorean ? "korean" : null,
+        token.features.hasAlpha ? "alpha" : null,
+        token.features.hasDigit ? "digit" : null,
+        token.features.hasSpecial ? "special" : null,
+        token.features.isEmail ? "email" : null,
+        "len" + token.features.length
+      ].filterNotNull()
+    })
+  }
+  return { tokens: payload }
+}
+
+// AI 응답 처리
+function applyAIResult(aiResponse: Json, tokens, result) {
+  if (aiResponse.service != null) {
+    result.service = tokens[aiResponse.service].value
+  }
+  if (aiResponse.id != null) {
+    result.id = tokens[aiResponse.id].value
+  }
+  if (aiResponse.password != null) {
+    result.password = tokens[aiResponse.password].value
+  }
+  result.confidence = 0.6  // AI 결과는 medium 신뢰도
+}
+
+// ==============================
+// 전체 실패 Fallback
+// ==============================
+
+function handleParseFailure(inputText: String): ParsedResult {
+  return ParsedResult(
+    service = "미지정",
+    id = null,
+    password = null,
+    extras = [inputText],  // 전체를 메모로
+    confidence = 0.0,
+    needAI = false
+  )
+}
+
+// ==============================
+// Notes
+// ==============================
+// - value 필드는 절대 서버로 전송하지 않음
+// - consumed 플래그로 중복 분류 방지
+// - confidence는 UX 판단용 지표 (저장 여부 강제 아님)
+// - 모든 실패 케이스는 "전체 메모 저장"으로 fallback
+// - AI 호출은 confidence < 0.7 일 때만
+```
+
+#### D.13 Quick Add AI 프롬프트 스펙
+
+##### D.13.1 목적
+
+Quick Add 규칙 엔진으로 불확실한 경우(confidence < 0.7)만 AI를 호출하여, 토큰의 의미적 역할(service / id / password / extra)을 판단한다.
+
+⚠️ **실제 문자열 값은 절대 AI로 전송하지 않는다.** AI는 오직 토큰의 특성(feature)과 순서(index)만 보고 판단한다.
+
+##### D.13.2 AI 사용 원칙
+
+| 원칙 | 설명 |
+|------|------|
+| 조언자 역할 | AI는 결정권자가 아니라 조언자 |
+| 사용자 확인 | 최종 저장 전 반드시 사용자 확인 |
+| Graceful Degradation | AI 실패 시에도 앱 기능은 정상 동작 |
+| 추천 상태 | AI 결과는 "추천" 상태로만 사용 |
+
+##### D.13.3 입력 데이터 스펙 (Client → AI)
+
+**Payload 구조:**
+```json
+{
+  "task": "classify_tokens",
+  "tokens": [
+    {
+      "index": 0,
+      "features": ["korean", "len4"]
+    },
+    {
+      "index": 1,
+      "features": ["alpha", "digit", "len8"]
+    },
+    {
+      "index": 2,
+      "features": ["digit", "special", "len7"]
+    }
+  ]
+}
+```
+
+**Feature 정의:**
+
+| Feature | 의미 |
+|---------|------|
+| korean | 한글 포함 |
+| alpha | 영문 포함 |
+| digit | 숫자 포함 |
+| special | 특수문자 포함 |
+| email | 이메일 형식 |
+| phone | 전화번호 패턴 |
+| numeric | 숫자만 구성 |
+| url | URL 형식 |
+| lenX | 길이 정보 (예: len8) |
+
+##### D.13.4 시스템 프롬프트 (System Prompt)
+
+```
+You are a classification engine for a secure local memo app.
+
+You NEVER see real values.
+You ONLY see token indexes and abstract features.
+
+Your job:
+- Decide which token index best matches each field.
+- Fields: service, id, password
+- If uncertain, return null for that field.
+
+Rules:
+- Email-like tokens are usually id
+- Tokens with special characters are usually password
+- Korean-only short tokens are usually service
+- Alpha+digit mixed tokens are usually id
+- First token is often service if it's Korean
+
+Return ONLY valid JSON in this exact format:
+{"service": <index|null>, "id": <index|null>, "password": <index|null|}
+
+No markdown, no explanation, no extra fields.
+
+Examples:
+
+Input: [{"index":0,"features":["korean","len3"]},{"index":1,"features":["alpha","digit","len7"]},{"index":2,"features":["special","digit","len8"]}]
+Output: {"service":0,"id":1,"password":2}
+
+Input: [{"index":0,"features":["korean","len4"]},{"index":1,"features":["email","len15"]},{"index":2,"features":["alpha","special","len10"]}]
+Output: {"service":0,"id":1,"password":2}
+
+Input: [{"index":0,"features":["alpha","digit","len6"]},{"index":1,"features":["special","alpha","len8"]}]
+Output: {"service":null,"id":0,"password":1}
+```
+
+##### D.13.5 사용자 프롬프트 (User Prompt)
+
+```
+Given the following tokens and their features,
+classify them into service, id, and password.
+
+If a field cannot be determined confidently, set it to null.
+
+Tokens:
+{tokens_json}
+
+Return JSON only.
+```
+
+##### D.13.6 출력 스펙 (AI → Client)
+
+**정상 응답:**
+```json
+{
+  "service": 0,
+  "id": 1,
+  "password": 2
+}
+```
+
+**불확실한 경우:**
+```json
+{
+  "service": 0,
+  "id": null,
+  "password": 2
+}
+```
+
+**전부 불확실:**
+```json
+{
+  "service": null,
+  "id": null,
+  "password": null
+}
+```
+
+##### D.13.7 응답 검증 로직 (Client Side)
+
+```
+function validateAIResponse(response, tokenCount): Bool {
+  // 1. JSON 파싱 가능한지
+  parsed = tryParseJSON(response)
+  if (parsed == null) return false
+  
+  // 2. 필수 필드 존재하는지
+  requiredFields = ["service", "id", "password"]
+  for (field in requiredFields) {
+    if (!parsed.hasKey(field)) return false
+  }
+  
+  // 3. index 범위 검증 (0 ~ tokenCount-1 또는 null)
+  for (field in requiredFields) {
+    value = parsed[field]
+    if (value != null && (value < 0 || value >= tokenCount)) {
+      return false
+    }
+  }
+  
+  // 4. 중복 index 검증
+  usedIndexes = []
+  for (field in requiredFields) {
+    value = parsed[field]
+    if (value != null) {
+      if (usedIndexes.contains(value)) return false
+      usedIndexes.add(value)
+    }
+  }
+  
+  return true
+}
+
+// 검증 실패 시 → 규칙 기반 결과로 폴백
+```
+
+##### D.13.8 규칙 엔진 vs AI 충돌 처리
+
+```
+function resolveConflict(ruleResult, aiResult): ParsedResult {
+  
+  // Case 1: 규칙 엔진 고신뢰 → 규칙 우선
+  if (ruleResult.confidence >= 0.8) {
+    return ruleResult
+  }
+  
+  // Case 2: AI 결과가 유효하면 AI 우선
+  if (aiResult != null && isValidAIResult(aiResult)) {
+    return mergeWithAI(ruleResult, aiResult)
+  }
+  
+  // Case 3: 둘 다 불확실 → 규칙 기반 + 사용자 확인 강조
+  ruleResult.needsUserReview = true
+  return ruleResult
+}
+
+function mergeWithAI(ruleResult, aiResult): ParsedResult {
+  // AI가 판단한 필드만 덮어씀
+  if (aiResult.service != null) {
+    ruleResult.service = tokens[aiResult.service].value
+  }
+  if (aiResult.id != null) {
+    ruleResult.id = tokens[aiResult.id].value
+  }
+  if (aiResult.password != null) {
+    ruleResult.password = tokens[aiResult.password].value
+  }
+  
+  ruleResult.confidence = 0.65  // AI 보조 결과는 medium
+  return ruleResult
+}
+```
+
+##### D.13.9 비용 최소화 전략
+
+| 전략 | 설명 |
+|------|------|
+| 조건부 호출 | confidence < 0.7 일 때만 AI 호출 |
+| 토큰 수 제한 | 최대 6개 토큰만 전송 |
+| 프롬프트 고정 | System prompt 재사용 |
+| 결과 캐싱 | 동일 feature 조합은 캐시 사용 |
+
+**캐싱 키 생성:**
+```
+function generateCacheKey(tokens): String {
+  featureStrings = []
+  for (token in tokens) {
+    // features를 정렬해서 일관된 키 생성
+    sorted = token.features.sort()
+    featureStrings.add(sorted.join(","))
+  }
+  return featureStrings.join("|")
+}
+
+// 예: "alpha,digit,len7|korean,len3|len8,special"
+```
+
+**예상 토큰 사용량:**
+```
+1회 호출 평균:
+- System prompt: ~150 토큰
+- User prompt + tokens: ~50 토큰
+- Response: ~30 토큰
+- 합계: ~230 토큰/회
+
+Gemini Flash 무료 (일 1,500회) 기준:
+→ 일 1,500회 Quick Add AI 호출 가능
+```
+
+##### D.13.10 실패 처리
+
+| 상황 | 처리 |
+|------|------|
+| AI timeout (5초) | 규칙 기반 결과만 사용 |
+| AI error (500, 429 등) | 규칙 기반 결과만 사용 |
+| AI 응답 파싱 실패 | 규칙 기반 결과만 사용 |
+| AI 응답 검증 실패 | 규칙 기반 결과만 사용 |
+| AI 결과 전부 null | 전체 메모 저장 제안 |
+
+**사용자 안내 문구:**
+```
+// AI 사용 불가 시
+💡 AI 분석을 사용할 수 없어 기본 규칙으로 분석했어요.
+   결과를 확인해주세요.
+
+// AI 한도 초과 시
+💡 오늘 AI 분석 한도를 모두 사용했어요.
+   기본 규칙으로 분석했으니 결과를 확인해주세요.
+```
+
+##### D.13.11 MVP 범위 제외 (v2 이후)
+
+- 다중 계정 분리 판단
+- 학습/피드백 루프
+- 사용자 정의 필드
+- 자연어 설명 출력
+- 프롬프트 A/B 테스트

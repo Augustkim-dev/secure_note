@@ -94,3 +94,19 @@ docs/plans/ 및 docs/works/ 폴더의 파일은 다음 형식을 따름:
 - 클라우드 백업/동기화
 - 태그/즐겨찾기, 비밀번호 생성기
 - 검색 하이라이트, 클립보드 자동 삭제
+
+## Git Workflow
+
+**Repository**: https://github.com/Augustkim-dev/secure_note.git
+
+**작업 규칙**:
+- `docs/plans/`의 Phase 단위로 작업 진행
+- 각 Phase 또는 의미 있는 작업 단위 완료 시 commit & push
+- 커밋 메시지 형식: `feat:`, `fix:`, `docs:`, `refactor:` 등 사용
+
+**Phase 진행 순서**:
+1. `001_foundation.md` - 기반 구축
+2. `002_notebook.md` - 노트북 기능
+3. `003_input_quick_add.md` - 입력 기능
+4. `004_import_search.md` - Import & 검색
+5. `005_release.md` - 출시 준비
